@@ -25,3 +25,31 @@ Flags:
 
 The linking and making the executable is done via:
 `riscv64-elf-ld -T boot/linker.ld build/start.o build/kmain.o -o neuros.elf`
+
+# 4/5/26
+
+Day 2. Yesterday we booted the machine. Today..we have the system get into our code.
+
+Ig what i need to do today is populate `start.S`, `kmain.c` and `linker.ld`.
+
+Here's some standard address locations I googled up for RISC-V virtual memory:
+- `0x0000_1000` - Boot ROM
+- `0x0200_0000` - CLINT (Core local interrupter), for software and timer interrupts
+- `0x0C00_0000` - PLIC (Platform Level Interrupt Controller)
+- `0x1000_0000` - UART
+- `0x1000_1000` - VirtIO MMIO
+- `0x8000_0000` - RAM starts from here
+
+On power-up, PC starts at Boot ROM, and then quickly jumps to RAM.
+
+Before running any C code (like `kmain.c`), we must adhere to the RISC-V calling convention and manually init the C runtime
+
+- Initialise `sp`, the stack pointer
+- Initialise `gp`, the global pointer
+- Explicitly zero out all uninitialised global vars
+
+We then use registers `a0` to `a7` for function args (`int`), can use the `call` psuedo instr.
+
+The `_start` section serves as the low level entry point where the CPU begins execution from, so that's where we do all the clearing ig
+
+Alright, set up all the files. Now NeuroS boots a valid ELF, enters `_start`, initializes stack, and transfers control to `kmain`. Tomorrow, we'll try printing.
