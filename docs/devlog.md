@@ -53,3 +53,15 @@ We then use registers `a0` to `a7` for function args (`int`), can use the `call`
 The `_start` section serves as the low level entry point where the CPU begins execution from, so that's where we do all the clearing ig
 
 Alright, set up all the files. Now NeuroS boots a valid ELF, enters `_start`, initializes stack, and transfers control to `kmain`. Tomorrow, we'll try printing.
+
+# 5/5/26
+
+Day 3!
+
+Today's goal is to get the UART driver to print a message from `kmain`.
+
+UART (Universal Asynchronous Receiver-Transmitter) is a protocol used for serial communication between devices like microcontrollers and sensors
+
+We want to use the UART MMIO device to emit a character into the QEMU terminal by writing a byte into a specific register.
+
+Alright, implemented the first UART MMIO driver on QEMU virt. NeuroS successfully prints!
