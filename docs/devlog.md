@@ -65,3 +65,35 @@ UART (Universal Asynchronous Receiver-Transmitter) is a protocol used for serial
 We want to use the UART MMIO device to emit a character into the QEMU terminal by writing a byte into a specific register.
 
 Alright, implemented the first UART MMIO driver on QEMU virt. NeuroS successfully prints!
+
+# 6/6/26
+
+Day 4
+
+Today we want to add a time machine and implement timer interrupts in our OS. Essentially we add traps!
+
+Things that need to be understood:
+- `mtvec` register, CSR instructions
+- Role of CLINT, `mtime` and `mtimecmp` addresses
+- Machine timer interrupt bits
+- How a RISC-V machine trap handler looks like
+
+Address number `0x305` corresponds to `mtvec`, so we need to write there.
+In itself, `mtvec` is a CSR that holds the memory address of the trap handle routine, CPU must jump to this address to handle the event.
+
+CLINT is a hw compnent responsible for manging timer and software interrupts for individual processor cores. `mtime` is a 64-bit real time counter and `mtimecmp` is a compare register.
+
+In a QEMU virtual machine:
+- The CLINT base address is `0x02000000`
+- `mtime` address: `0x0200BFF8`
+- `mtimecmp` address: `0x02004000`
+
+The `mie` register at address `0x304` is the machine interrupt-enable register, the `mie.MTIE` bit (`7`) must be enabled. Bit `5` corresponds to `mia.STIE`. Machine mode is the highest privilege level, Supervisor is intermediate, and User is lowest.
+
+The `mstatus` register (`0x300`) register has some config options, and to enable interrupts in machine and supervisor mode, the bits `1` and `3` must be set.
+
+rn we do not have to worry about supervisor mode. NeuroS is currently sunlge hart, machine mode only, direct machine trap handling.
+
+Okay, big day! NeuroS now supports periodic machine timer interrupts.
+
+Lots of assembly stuff, took a whole to understand. but now the kernel fires timer interrupts asynchronously!
