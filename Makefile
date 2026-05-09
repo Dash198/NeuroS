@@ -1,7 +1,7 @@
 CC = riscv64-elf-gcc
 LD = riscv64-elf-ld
 
-CFLAGS = -march=rv64i_zicsr -mabi=lp64 -ffreestanding -nostdlib -c
+CFLAGS = -march=rv64i_zicsr -mabi=lp64 -ffreestanding -nostdlib -msmall-data-limit=0 -mcmodel=medany -c
 LDFLAGS = -T boot/linker.ld
 INCFLAGS = -I./include
 

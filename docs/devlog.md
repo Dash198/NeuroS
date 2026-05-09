@@ -97,3 +97,36 @@ rn we do not have to worry about supervisor mode. NeuroS is currently sunlge har
 Okay, big day! NeuroS now supports periodic machine timer interrupts.
 
 Lots of assembly stuff, took a whole to understand. but now the kernel fires timer interrupts asynchronously!
+
+# 8/6/26
+
+ran into some errors:
+- Firstly the `ticks` variable was in the `.sbss` section, and the linker tried to use an optimization that isn't compatible wih our memory laout. Specifically, the compiler put `ticks` in `.sbss` but the linker cannot find a valid way to address it within the allowed range. So we had to add the flag `-msmall-data-limit=0` to stop the compiler form using `.sbss` entirely
+  - After this, `ticks` went to `.bss` but the linker still had a problem. This is because in RISC-V, even standard absolute addressing ahs a distance limit of 2GB from instruction to data. If the linker places them very far apart, the standard code fails. We had to add `-mcmodel=medany` which tells the compiler to use "medium any" addressing, which allows the code and data to be placed anywhere in the 64-bit address space.
+
+Now, the actual Day 5:
+> building the first scheuler/task abstraction layer
+
+No context switching/processes, we just want to introduce it. Need to add task representation, scheduler stae, ownership structures.
+
+# 9/6/26
+
+Day 6, huh?
+
+So yesterday we made a small struct to represent a task. Today we think about the logistics that our OS has to take care of when switching tasks.
+
+Time to study `xv6` lol.
+
+Okay so context switching is done vua the `swtch` routine in the file `swtch.S`.
+
+Now onto the RISC-V calling conventions:
+- Caller Saved Regs: `x1`, `x5-7`, `x10-17`, `x28-31`
+- Callee Saved Regs: `x2`, `x8-9`, `x18-27`
+
+There are some other things in `xv6` like process parent, process size, pagetabl etc which idk if they're relevant to me rn.
+
+Future process of switching:
+- Save task context `context_t` into memory, load the `context_t` of the new task.
+- Need to make an array of `task_t` to load their metadata.
+
+`xv6` handles scheduling quite gracefully since theirs is round-robing, so they can go on an inf loop and be happy. My MLFQ was built on top of that same loop, so ig we could follow a similar type of scheduling loop for now.
