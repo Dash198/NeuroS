@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-enum task_state { READY, BLOCKED, RUNNING, ZOMBIE };
+enum task_state { READY, BLOCKED, RUNNING, ZOMBIE, UNUSED };
 
 // Save all the calle-saved registers
 typedef struct context_t{
@@ -29,3 +29,7 @@ typedef struct task_t {
 
     context_t context;
 } task_t;
+
+void initAB();
+void runB();
+void runA();

@@ -1,4 +1,5 @@
 #include "uart.h"
+#include "task.h"
 #include "common.h"
 
 int kmain(){
@@ -10,7 +11,10 @@ int kmain(){
     uart_putc('o');
     uart_putc('S');
     // Init timer
-    timer_init();
+    //timer_init();
+
+    initAB();
+    runA();
 
     // Inf loop
     for(int i=0; ; i++){}

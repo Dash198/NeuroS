@@ -130,3 +130,23 @@ Future process of switching:
 - Need to make an array of `task_t` to load their metadata.
 
 `xv6` handles scheduling quite gracefully since theirs is round-robing, so they can go on an inf loop and be happy. My MLFQ was built on top of that same loop, so ig we could follow a similar type of scheduling loop for now.
+
+# 12/6/26
+
+Day 7, then. Today we start to approach actual multitasking
+
+Today we'lll build conceptual and structural machinery for the first runnable kernel tasks. New tasks do not have their registers initialized but the machine expects them to be. So we need to work on that.
+
+We need to pre-construct the tsk context before the task even runs because the code expects that.
+
+So we'll just create some dummy tasks and illustrate multitasking.
+
+things that need to happen:
+- Each task needs independent stack memory
+- A task must possess a valid initial context before first switch
+- Initial `ra` determines first execution entrypoint
+- `swtch` only manipulates saved contexts
+
+`xv6` has a special first process named `init` that solves the context problem, cuz for the tasks to be scheduled, we need some context!
+
+For now we'll only create `taskA` and `taskB` and alternate bw them.
