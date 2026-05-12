@@ -150,3 +150,6 @@ things that need to happen:
 `xv6` has a special first process named `init` that solves the context problem, cuz for the tasks to be scheduled, we need some context!
 
 For now we'll only create `taskA` and `taskB` and alternate bw them.
+
+alright got it, ran into a bug where `swtch` expected `ra` and then `sp` but i accidentally defined them in the inverse order ;-;
+Works now tho

@@ -1,12 +1,15 @@
 #include <stdint.h>
 
+#define MAX_TASKS 2
+#define STACK_SIZE 4096
+
 enum task_state { READY, BLOCKED, RUNNING, ZOMBIE, UNUSED };
 
 // Save all the calle-saved registers
 typedef struct context_t{
     // Stack pointer
-    uint64_t sp;
     uint64_t ra;
+    uint64_t sp;
     // Frame pointer
     uint64_t s0;
     // Saved registers
@@ -29,6 +32,9 @@ typedef struct task_t {
 
     context_t context;
 } task_t;
+
+extern context_t scheduler_context;
+extern task_t tasks[MAX_TASKS];
 
 void initAB();
 void runB();

@@ -2,6 +2,8 @@
 #include "task.h"
 #include "common.h"
 
+extern uint64_t swtch(context_t*, context_t*);
+
 int kmain(){
     // Initial print
     uart_putc('N');
@@ -14,8 +16,9 @@ int kmain(){
     //timer_init();
 
     initAB();
-    runA();
-
+    uart_putc('S');
+    swtch(&scheduler_context, &tasks[0].context);
+    uart_putc('S');
     // Inf loop
     for(int i=0; ; i++){}
     return 0;

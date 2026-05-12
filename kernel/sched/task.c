@@ -2,12 +2,11 @@
 #include "uart.h"
 #include <stdint.h>
 
-#define MAX_TASKS 2
-#define STACK_SIZE 4096
-
+context_t scheduler_context;
 task_t tasks[MAX_TASKS];
 
-uint8_t stackA[STACK_SIZE], stackB[STACK_SIZE];
+uint8_t stackA[STACK_SIZE];
+uint8_t stackB[STACK_SIZE];
 
 extern uint64_t swtch(context_t*, context_t*);
 
@@ -26,10 +25,11 @@ void runA(){
 }
 
 void initAB(){
+    uart_putc('I');
     tasks[0].task_id = 0;
     tasks[0].state = UNUSED;
     tasks[0].context.sp = (uint64_t)&stackA[STACK_SIZE];
-    tasks[0].context.ra = (uint64_t)&runA;
+    tasks[0].context.ra = (uint64_t)runA;
     tasks[0].context.s0 = 0;
     tasks[0].context.s1 = 0;
     tasks[0].context.s2 = 0;
@@ -46,7 +46,7 @@ void initAB(){
     tasks[1].task_id = 1;
     tasks[1].state = UNUSED;
     tasks[1].context.sp = (uint64_t)&stackB[STACK_SIZE];
-    tasks[1].context.ra = (uint64_t)&runB;
+    tasks[1].context.ra = (uint64_t)runB;
     tasks[1].context.s0 = 0;
     tasks[1].context.s1 = 0;
     tasks[1].context.s2 = 0;
