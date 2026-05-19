@@ -153,3 +153,7 @@ For now we'll only create `taskA` and `taskB` and alternate bw them.
 
 alright got it, ran into a bug where `swtch` expected `ra` and then `sp` but i accidentally defined them in the inverse order ;-;
 Works now tho
+
+# 16/6/26
+
+Got busy with hiring for Epoch. Time to get back! Today we shall make the switching timer-interrupt based rather than voluntary.

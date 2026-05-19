@@ -3,6 +3,7 @@
 #include "riscv.h"
 #include "uart.h"
 #include "common.h"
+#include "task.h"
 
 #define MTIME_ADDR 0x0200BFF8
 #define MTIMECMP_ADDR 0x02004000
@@ -16,8 +17,10 @@ volatile uint64_t ticks = 0;
 
 // Trap handler
 void handle_trap(){
-    // Print T for now
+    // Change the process
+
     uart_putc('T');
+    sched();
     ticks++;
 
     // Update the next comparison
