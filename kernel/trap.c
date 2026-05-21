@@ -20,12 +20,17 @@ void handle_trap(){
     // Change the process
 
     uart_putc('T');
-    sched();
-    ticks++;
 
     // Update the next comparison
     uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
     *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
+
+    set_mstatus(1 << 3);
+
+    sched();
+    ticks++;
+
+
 }
 
 void timer_init(){
@@ -36,11 +41,13 @@ void timer_init(){
         :
         : "i"(trap_handler)
     );
-    // Enable interrupts
-    set_mie(1<<7);
-    set_mstatus(1<<3);
+
 
     // Initialize the comparison reg.
     uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
     *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
+
+    // Enable interrupts
+    set_mie(1<<7);
+    set_mstatus(1<<3);
 }

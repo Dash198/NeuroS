@@ -1,9 +1,9 @@
 #include <stdint.h>
 
-#define MAX_TASKS 2
+#define MAX_TASKS 64
 #define STACK_SIZE 4096
 
-enum task_state { READY, BLOCKED, RUNNING, ZOMBIE, UNUSED };
+enum task_state { UNUSED, READY, BLOCKED, RUNNING, ZOMBIE };
 
 // Trapframe
 typedef struct trapframe_t {
@@ -78,7 +78,7 @@ typedef struct task_t {
   context_t context;
 } task_t;
 
-extern context_t *scheduler_context;
+extern context_t scheduler_context;
 extern task_t tasks[MAX_TASKS];
 extern task_t *current_task;
 

@@ -157,3 +157,25 @@ Works now tho
 # 16/6/26
 
 Got busy with hiring for Epoch. Time to get back! Today we shall make the switching timer-interrupt based rather than voluntary.
+
+# 19/6/26
+
+Alright, got it working!
+
+Some things:
+
+- Had to first initialize the timer and comparison registers before enabling interrupts
+- Global interrupts are disabled on a timer interrupt so had to re-init them on an interrupt
+- had to update the cmp reg before calling `sched` otherwise it wouldnt work.
+- Now we move on to making a proper task model and scheduler
+
+# 21/6/26
+
+instead of dedicated functions to declare `A` and `B`, made a gneeral function `create_task`.
+
+Faced some silent loops due to the following:
+- The `.bss` section says everything placed there like uninitialized global variables must be initialized to 0.
+- The `enum task_state` was initially ordered such that `READY` was corresponding to 0, so all the tasks were assigned `READY`.
+- Hence we couldn't find a task that was `UNUSED`!
+
+also built a round robin scheduler!

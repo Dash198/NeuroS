@@ -17,7 +17,7 @@ int kmain() {
   task_init();
 
   timer_init();
-  swtch(scheduler_context, &tasks[0].context);
+  swtch(&scheduler_context, &tasks[0].context);
   // Inf loop
   for (int i = 0;; i++) {
   }
