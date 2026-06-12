@@ -76,6 +76,11 @@ typedef struct task_t {
   enum task_state state;
 
   context_t context;
+
+  uint64_t ticks_run;
+  uint64_t ticks_waiting;
+
+  int priority;
 } task_t;
 
 extern context_t scheduler_context;
@@ -87,3 +92,4 @@ void runB();
 void runA();
 void task_init();
 void sched();
+void dump_telemetry();

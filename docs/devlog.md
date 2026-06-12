@@ -179,3 +179,22 @@ Faced some silent loops due to the following:
 - Hence we couldn't find a task that was `UNUSED`!
 
 also built a round robin scheduler!
+
+# 12/6/26 - The Return & The Bug Hunt!
+
+After coming back from a break, we tackled three massive OS bugs and learned some incredible systems lessons today!
+
+### 1. The Missing M-Extension (Compiler vs Bare Metal)
+When trying to do division or modulo (`%`) on 64-bit integers, the linker threw an `undefined reference to '__umoddi3'` error.
+**The Lesson:** Our Makefile was compiling with `-march=rv64i_zicsr` (base integer instructions only). Because we didn't include the `M` (Multiplication/Division) extension, the compiler assumed the CPU couldn't do hardware division and tried to call a software division function from the standard library (`libgcc`). Since we compile with `-nostdlib` (bare metal), it crashed! 
+**The Fix:** We changed `-march=rv64i_zicsr` to `-march=rv64im_zicsr` to tell the compiler we have hardware division.
+
+### 2. The Context Switch Illusion (`ticks++`)
+When we started dumping telemetry, it dumped exactly 3 times and then stopped dumping, but continued running.
+**The Lesson:** In our `handle_trap` function, `ticks++` was placed *after* the `sched()` context switch. When a new task runs for the very first time, it jumps directly to its entry point (like `runB`) and *never returns* to the rest of the interrupt handler! So `ticks++` was skipped. It only started incrementing normally once all 3 tasks had been fully initialized and resumed from `sched()`.
+**The Fix:** We moved `ticks++;` to the top of `handle_trap` above the `sched()` call!
+
+### 3. Stack Overflow via Nested Interrupts
+Task 1 and Task 2 completely stopped getting scheduled, leaving Task 0 to run forever.
+**The Lesson:** We enabled interrupts (`set_mstatus(1<<3)`) inside the interrupt handler `handle_trap` itself! Since we lowered the timer `INTERVAL` to 1000 cycles, the timer fired again *while* we were busy printing telemetry to the slow UART. This caused the trap handler to recursively push 264-byte trapframes onto Task 0's stack until it overflowed its 4KB limit and corrupted the adjacent `tasks` array memory in `.bss`. This effectively deleted Task 1 and Task 2's states!
+**The Fix:** Never enable interrupts inside an interrupt handler! Instead, the tasks must enable their own interrupts when they start running (or we set `MPIE` in the trapframe before `mret`).
