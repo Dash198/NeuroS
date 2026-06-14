@@ -198,3 +198,20 @@ When we started dumping telemetry, it dumped exactly 3 times and then stopped du
 Task 1 and Task 2 completely stopped getting scheduled, leaving Task 0 to run forever.
 **The Lesson:** We enabled interrupts (`set_mstatus(1<<3)`) inside the interrupt handler `handle_trap` itself! Since we lowered the timer `INTERVAL` to 1000 cycles, the timer fired again *while* we were busy printing telemetry to the slow UART. This caused the trap handler to recursively push 264-byte trapframes onto Task 0's stack until it overflowed its 4KB limit and corrupted the adjacent `tasks` array memory in `.bss`. This effectively deleted Task 1 and Task 2's states!
 **The Fix:** Never enable interrupts inside an interrupt handler! Instead, the tasks must enable their own interrupts when they start running (or we set `MPIE` in the trapframe before `mret`).
+
+# 14/6/26
+
+### 4. Interrupt Storms and Recursive Faults
+Even after fixing the nested interrupt stack overflow, the OS completely froze, and QEMU terminated unexpectedly. Task 1 ran thousands of times while Task 0 and Task 2 stopped entirely.
+**The Lesson:** Our `INTERVAL` was set to `1000` cycles. However, `dump_telemetry()` takes tens of thousands of cycles to print text over the simulated UART. Because the interval was so short, by the time the trap handler finished, the next timer interrupt was *already* pending and fired immediately upon returning to the task (`mret`). The tasks were effectively getting 0 execution time, creating an **Interrupt Storm**. Eventually, this slight memory corruption caused the scheduler to not find any `READY` tasks, leading it to dereference a NULL `current_task` pointer. This caused a recursive fault loop that completely crashed the QEMU machine.
+**The Fix:** We increased the `INTERVAL` back to `100000`, allowing the trap handler plenty of time to finish and giving the tasks their fair CPU timeslice.
+
+### 5. Priority Scheduling and Starvation
+We implemented our first Strict Priority Scheduler with 3 queues. However, upon booting, only Task A (priority 0) ever ran!
+**The Lesson:** This wasn't a bug in the code; it was a perfect demonstration of **Starvation**! In strict priority scheduling, if the highest priority task never yields or blocks for I/O (like our infinite `while(1)` loops), the scheduler will never look at lower priority tasks. They simply starve to death. This perfectly highlights why modern operating systems do not use strict priorities without mitigation.
+**Next Steps:** We are going to evolve this strict priority scheduler into a **Multi-Level Feedback Queue (MLFQ)** to implement "Aging" (preventing starvation by boosting priorities over time) and "Demotion" (punishing CPU-heavy tasks).
+
+### 6. MLFQ and The Harmonic Resonance Bug
+We implemented the MLFQ with Time Allotments (demotion after running for X ticks) and Aging (boosting all tasks to priority 0 every 16 ticks). However, the telemetry showed that Task 2 was completely stuck at Priority 2, while Task 0 and Task 1 flawlessly bounced between Priority 0 and 1! 
+**The Lesson:** This was a mathematically perfect edge case—a **Harmonic Resonance**! Our `boost_priorities()` function only boosted tasks in the `READY` state. Because Task 0 and Task 1 always consumed exactly 12 ticks combined before falling to priority 2, Task 2 would begin its execution right before the 16th tick. When the 16-tick boost hit, Task 2 was currently `RUNNING`. Since it wasn't `READY`, it missed the priority boost and stayed at priority 2 forever! The cycle of Task 0 and 1 combined with the 16-tick interval perfectly synchronized so that Task 2 was *always* the one running when the boost occurred.
+**The Fix:** We changed the boost condition from `tasks[i].state == READY` to `tasks[i].state != UNUSED`, ensuring that even the currently running task gets its priority refreshed. The MLFQ is now mathematically perfect!

@@ -79,6 +79,7 @@ typedef struct task_t {
 
   uint64_t ticks_run;
   uint64_t ticks_waiting;
+  int priority_ticks;
 
   int priority;
 } task_t;
@@ -93,3 +94,4 @@ void runA();
 void task_init();
 void sched();
 void dump_telemetry();
+void boost_priorities();

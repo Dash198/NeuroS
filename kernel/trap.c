@@ -22,15 +22,37 @@ void handle_trap() {
   // uart_putc('T');
   ticks++;
 
-  // Update the next comparison
-  uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
-  *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
-
   current_task->ticks_run++;
+  current_task->priority_ticks++;
+
+  if(ticks % 16 == 0){
+      boost_priorities();
+  }
+  else{
+      switch(current_task->priority){
+          case 0:
+          if(current_task->priority_ticks >= 2){
+              current_task->priority++;
+              current_task->priority_ticks = 0;
+          }
+          break;
+
+          case 1:
+          if(current_task->priority_ticks >= 4){
+              current_task->priority++;
+              current_task->priority_ticks = 0;
+          }
+          break;
+      }
+  }
 
   if (ticks % 100 == 0) {
     dump_telemetry();
   }
+
+  // Update the next comparison
+  uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
+  *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
 
   sched();
 }

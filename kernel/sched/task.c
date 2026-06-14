@@ -70,7 +70,7 @@ void initAB() {
 }
 
 // Need to change this, we'll add priority change mechanism later.
-int create_task(void (*entry_point)(), int priority) {
+int create_task(void (*entry_point)()) {
 
   for (int i = 0; i < MAX_TASKS; i++) {
     if (tasks[i].state == UNUSED) {
@@ -93,7 +93,8 @@ int create_task(void (*entry_point)(), int priority) {
 
       tasks[i].ticks_waiting = 0;
       tasks[i].ticks_run = 0;
-      tasks[i].priority = priority;
+      tasks[i].priority = 0;
+      tasks[i].priority_ticks = 0;
 
       return i;
     }
@@ -103,9 +104,9 @@ int create_task(void (*entry_point)(), int priority) {
 }
 
 void task_init() {
-  create_task(&runA, 0);
-  create_task(&runB, 1);
-  create_task(&runC, 2);
+  create_task(&runA);
+  create_task(&runB);
+  create_task(&runC);
   current_task = &tasks[0];
 }
 
@@ -127,12 +128,15 @@ void sched() {
         tasks[idx].state = RUNNING;
         next = &tasks[idx];
         task_selected = 1;
-      } else if (p == 0 && tasks[idx].state == READY) {
-        tasks[idx].ticks_waiting++;
       }
     }
   }
 
+  for(int i=0; i<MAX_TASKS; i++){
+      if(tasks[i].state == READY){
+          tasks[i].ticks_waiting++;
+      }
+  }
   current_task = next;
   swtch(&(old->context), &(current_task->context));
 }
@@ -143,10 +147,21 @@ void dump_telemetry() {
       continue;
     uart_puts("Task ID: ");
     uart_putint(tasks[i].task_id);
+    uart_puts(", Priority: ");
+    uart_putint(tasks[i].priority);
     uart_puts(", Ticks Waited: ");
     uart_putint(tasks[i].ticks_waiting);
     uart_puts(", Ticks Run: ");
     uart_putint(tasks[i].ticks_run);
     uart_puts("\n");
   }
+}
+
+void boost_priorities(){
+    for(int i=0; i<MAX_TASKS; i++){
+        if(tasks[i].state != UNUSED){
+            tasks[i].priority = 0;
+            tasks[i].priority_ticks = 0;
+        }
+    }
 }
