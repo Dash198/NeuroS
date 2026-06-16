@@ -10,8 +10,8 @@ all: build_dir build/neuros.elf
 build_dir:
 	mkdir -p build
 
-build/neuros.elf: build/start.o build/trap_entry.o build/trap.o build/kmain.o build/uart.o build/swtch.o build/task.o
-	$(LD) $(LDFLAGS) build/start.o build/trap_entry.o build/trap.o build/uart.o build/task.o build/swtch.o build/kmain.o -o build/neuros.elf
+build/neuros.elf: build/start.o build/trap_entry.o build/trap.o build/kmain.o build/uart.o build/swtch.o build/task.o build/kalloc.o
+	$(LD) $(LDFLAGS) build/start.o build/trap_entry.o build/trap.o build/uart.o build/task.o build/kalloc.o build/swtch.o build/kmain.o -o build/neuros.elf
 
 build/start.o: boot/start.S
 	$(CC) -march=rv64im_zicsr -mabi=lp64 -c boot/start.S -o build/start.o
@@ -21,6 +21,9 @@ build/trap_entry.o: boot/trap.S
 
 build/trap.o: kernel/trap.c
 	$(CC) $(CFLAGS) $(INCFLAGS) kernel/trap.c -o build/trap.o
+
+build/kalloc.o: kernel/mm/kalloc.c
+	$(CC) $(CFLAGS) $(INCFLAGS) kernel/mm/kalloc.c -o build/kalloc.o
 
 build/swtch.o: kernel/sched/swtch.S
 	$(CC) -march=rv64im_zicsr -mabi=lp64 -c kernel/sched/swtch.S -o build/swtch.o

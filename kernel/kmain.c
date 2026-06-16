@@ -1,7 +1,8 @@
 #include "common.h"
+
+#include "kalloc.h"
 #include "task.h"
 #include "uart.h"
-
 extern uint64_t swtch(context_t *, context_t *);
 
 int kmain() {
@@ -13,7 +14,7 @@ int kmain() {
   uart_putc('o');
   uart_putc('S');
   // Init timer
-
+  kinit();
   task_init();
 
   timer_init();

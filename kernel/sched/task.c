@@ -1,4 +1,5 @@
 #include "task.h"
+#include "kalloc.h"
 #include "riscv.h"
 #include "uart.h"
 #include <stdint.h>
@@ -6,8 +7,6 @@
 context_t scheduler_context;
 task_t tasks[MAX_TASKS];
 task_t *current_task;
-
-uint8_t stacks[MAX_TASKS][STACK_SIZE];
 
 extern uint64_t swtch(context_t *, context_t *);
 
@@ -76,7 +75,7 @@ int create_task(void (*entry_point)()) {
     if (tasks[i].state == UNUSED) {
       tasks[i].state = READY;
       tasks[i].task_id = i;
-      tasks[i].context.sp = (uint64_t)&stacks[i][STACK_SIZE];
+      tasks[i].context.sp = (uint64_t)kalloc() + 4096;
       tasks[i].context.ra = (uint64_t)entry_point;
       tasks[i].context.s0 = 0;
       tasks[i].context.s1 = 0;
@@ -132,10 +131,10 @@ void sched() {
     }
   }
 
-  for(int i=0; i<MAX_TASKS; i++){
-      if(tasks[i].state == READY){
-          tasks[i].ticks_waiting++;
-      }
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].state == READY) {
+      tasks[i].ticks_waiting++;
+    }
   }
   current_task = next;
   swtch(&(old->context), &(current_task->context));
@@ -157,11 +156,11 @@ void dump_telemetry() {
   }
 }
 
-void boost_priorities(){
-    for(int i=0; i<MAX_TASKS; i++){
-        if(tasks[i].state != UNUSED){
-            tasks[i].priority = 0;
-            tasks[i].priority_ticks = 0;
-        }
+void boost_priorities() {
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].state != UNUSED) {
+      tasks[i].priority = 0;
+      tasks[i].priority_ticks = 0;
     }
+  }
 }
