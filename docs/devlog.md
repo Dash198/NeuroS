@@ -224,3 +224,15 @@ Before we can introduce dynamic task lifecycles (tasks spawning and exiting), th
 1. **Prepending vs Appending:** We initially tried to append to the tail of the free list, which caused a NULL pointer dereference. We learned that OS memory allocators don't care about order, so it's safer and cleaner to just prepend to the head.
 2. **Stack Math (Growing Downwards):** When we updated `create_task()` to use `kalloc()`, we accidentally set the Stack Pointer (`sp`) to the bottom of the allocated page. Since RISC-V stacks grow downwards, pushing to the stack instantly corrupted the page below it! We fixed this by adding `4096` to the pointer returned by `kalloc()`.
 **Result:** Phase 2 is complete! Tasks are now running flawlessly on dynamically allocated stacks.
+
+### 8. Dynamic Task Lifecycles and The Spawner (June 17, 2026)
+We successfully broke free from infinite `while(1)` loops by implementing `sleep()` and `exit()`. 
+**The Mechanics:** 
+- `sleep(ticks)` sets a task's state to `BLOCKED` and calculates a `wakeup_tick`. The trap handler periodically checks if `ticks >= wakeup_tick` to put the task back into the `READY` state.
+- `exit()` calls `kfree(current_task->stack)` to return memory to the Page Allocator, sets the state to `UNUSED`, and yields the CPU forever.
+**Gotchas Encountered:**
+1. **The Header Ghost Bug:** We added `void *stack;` to `task_t` in `task.h` and compiled. We saw `Ticks Run: 0` for all tasks. This happened because our `Makefile` lacked header dependencies. `task.c` compiled with the new struct size, but `trap.c` was never recompiled! `handle_trap()` was incrementing the wrong memory offset (accidentally incrementing the `stack` pointer instead of `ticks_run`). Fixed by running `make clean`.
+2. **The Insomnia Scheduler:** Our `sleep()` function successfully set tasks to `BLOCKED`, but the very first line of `sched()` was unconditionally `current_task->state = READY;`. It instantly erased the `BLOCKED` state before the task could sleep! Fixed by only resetting the state `if (current_task->state == RUNNING)`.
+**The Spawner:** To prevent the OS from running out of tasks, we turned Task 0 (`init`) into an I/O bound spawner. It sleeps for 500 ticks, wakes up, and calls `create_task(&runC)`.
+**The Math Proof:** Telemetry dumps ignored `runC` because it finished so fast that it was cleaned up as `UNUSED` before the 100-tick telemetry window hit. However, by analyzing the CPU consumption of Task 1 and Task 2 between tick 500 and 600, we found exactly 30 missing ticks of CPU time! `runC` was perfectly spawned, executed for exactly 30 ticks, and cleanly exited without crashing the OS.
+**Result:** Phase 3 is complete! The OS is now dynamic, generating rich asymmetric workload telemetry ready for Machine Learning.

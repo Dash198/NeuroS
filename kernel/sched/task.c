@@ -8,7 +8,19 @@ context_t scheduler_context;
 task_t tasks[MAX_TASKS];
 task_t *current_task;
 
+extern volatile uint64_t ticks;
 extern uint64_t swtch(context_t *, context_t *);
+
+void runC();
+int create_task(void (*entry_point)());
+
+void init() {
+  set_mstatus(1 << 3);
+  while (1) {
+    sleep(500);         // Sleep for a while
+    create_task(&runC); // Spawn a new finite task to do work!
+  }
+}
 
 void runB() {
   set_mstatus(1 << 3);
@@ -26,46 +38,14 @@ void runA() {
 
 void runC() {
   set_mstatus(1 << 3);
-  while (1) {
-    // uart_putc('C');
+
+  // Do some meaningless heavy math
+  volatile int i = 0;
+  while (i < 50000000) {
+    i++;
   }
-}
 
-void initAB() {
-  uart_putc('I');
-  tasks[0].task_id = 0;
-  tasks[0].state = RUNNING;
-  // tasks[0].context.sp = (uint64_t)&stackA[STACK_SIZE];
-  tasks[0].context.ra = (uint64_t)runA;
-  tasks[0].context.s0 = 0;
-  tasks[0].context.s1 = 0;
-  tasks[0].context.s2 = 0;
-  tasks[0].context.s3 = 0;
-  tasks[0].context.s4 = 0;
-  tasks[0].context.s5 = 0;
-  tasks[0].context.s6 = 0;
-  tasks[0].context.s7 = 0;
-  tasks[0].context.s8 = 0;
-  tasks[0].context.s9 = 0;
-  tasks[0].context.s10 = 0;
-  tasks[0].context.s11 = 0;
-
-  tasks[1].task_id = 1;
-  tasks[1].state = READY;
-  // tasks[1].context.sp = (uint64_t)&stackB[STACK_SIZE];
-  tasks[1].context.ra = (uint64_t)runB;
-  tasks[1].context.s0 = 0;
-  tasks[1].context.s1 = 0;
-  tasks[1].context.s2 = 0;
-  tasks[1].context.s3 = 0;
-  tasks[1].context.s4 = 0;
-  tasks[1].context.s5 = 0;
-  tasks[1].context.s6 = 0;
-  tasks[1].context.s7 = 0;
-  tasks[1].context.s8 = 0;
-  tasks[1].context.s9 = 0;
-  tasks[1].context.s10 = 0;
-  tasks[1].context.s11 = 0;
+  exit();
 }
 
 // Need to change this, we'll add priority change mechanism later.
@@ -75,7 +55,8 @@ int create_task(void (*entry_point)()) {
     if (tasks[i].state == UNUSED) {
       tasks[i].state = READY;
       tasks[i].task_id = i;
-      tasks[i].context.sp = (uint64_t)kalloc() + 4096;
+      tasks[i].stack = kalloc();
+      tasks[i].context.sp = (uint64_t)tasks[i].stack + 4096;
       tasks[i].context.ra = (uint64_t)entry_point;
       tasks[i].context.s0 = 0;
       tasks[i].context.s1 = 0;
@@ -94,6 +75,7 @@ int create_task(void (*entry_point)()) {
       tasks[i].ticks_run = 0;
       tasks[i].priority = 0;
       tasks[i].priority_ticks = 0;
+      tasks[i].wakeup_tick = 0;
 
       return i;
     }
@@ -103,6 +85,7 @@ int create_task(void (*entry_point)()) {
 }
 
 void task_init() {
+  create_task(&init);
   create_task(&runA);
   create_task(&runB);
   create_task(&runC);
@@ -111,7 +94,9 @@ void task_init() {
 
 // Scheduler function, uses round-robing scheduling
 void sched() {
-  current_task->state = READY;
+  if (current_task->state == RUNNING) {
+    current_task->state = READY;
+  }
   task_t *old = current_task;
   task_t *next = 0;
 
@@ -163,4 +148,16 @@ void boost_priorities() {
       tasks[i].priority_ticks = 0;
     }
   }
+}
+
+void sleep(int wait_ticks) {
+  current_task->state = BLOCKED;
+  current_task->wakeup_tick = ticks + wait_ticks;
+  sched();
+}
+
+void exit() {
+  kfree(current_task->stack);
+  current_task->state = UNUSED;
+  sched();
 }

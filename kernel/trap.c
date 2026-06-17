@@ -25,29 +25,34 @@ void handle_trap() {
   current_task->ticks_run++;
   current_task->priority_ticks++;
 
-  if(ticks % 16 == 0){
-      boost_priorities();
-  }
-  else{
-      switch(current_task->priority){
-          case 0:
-          if(current_task->priority_ticks >= 2){
-              current_task->priority++;
-              current_task->priority_ticks = 0;
-          }
-          break;
-
-          case 1:
-          if(current_task->priority_ticks >= 4){
-              current_task->priority++;
-              current_task->priority_ticks = 0;
-          }
-          break;
+  if (ticks % 16 == 0) {
+    boost_priorities();
+  } else {
+    switch (current_task->priority) {
+    case 0:
+      if (current_task->priority_ticks >= 2) {
+        current_task->priority++;
+        current_task->priority_ticks = 0;
       }
+      break;
+
+    case 1:
+      if (current_task->priority_ticks >= 4) {
+        current_task->priority++;
+        current_task->priority_ticks = 0;
+      }
+      break;
+    }
   }
 
   if (ticks % 100 == 0) {
     dump_telemetry();
+  }
+
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].state == BLOCKED && ticks >= tasks[i].wakeup_tick) {
+      tasks[i].state = READY;
+    }
   }
 
   // Update the next comparison

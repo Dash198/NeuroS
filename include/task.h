@@ -77,9 +77,12 @@ typedef struct task_t {
 
   context_t context;
 
+  void *stack;
+
   uint64_t ticks_run;
   uint64_t ticks_waiting;
   int priority_ticks;
+  int wakeup_tick;
 
   int priority;
 } task_t;
@@ -95,3 +98,5 @@ void task_init();
 void sched();
 void dump_telemetry();
 void boost_priorities();
+void sleep(int);
+void exit();
