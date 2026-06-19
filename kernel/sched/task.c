@@ -9,16 +9,21 @@ task_t tasks[MAX_TASKS];
 task_t *current_task;
 
 extern volatile uint64_t ticks;
+extern uint64_t total_energy;
+extern int current_freq;
 extern uint64_t swtch(context_t *, context_t *);
-
+uint64_t missed_deadlines = 0;
 void runC();
 int create_task(void (*entry_point)());
 
 void init() {
   set_mstatus(1 << 3);
   while (1) {
-    sleep(500);         // Sleep for a while
-    create_task(&runC); // Spawn a new finite task to do work!
+    sleep(500);                       // Sleep for a while
+    int task_id = create_task(&runC); // Spawn a new finite task to do work!
+    if (task_id != -1) {
+      tasks[task_id].deadline_tick = ticks + 40;
+    }
   }
 }
 
@@ -45,6 +50,9 @@ void runC() {
     i++;
   }
 
+  if (ticks > current_task->deadline_tick) {
+    missed_deadlines += 1;
+  }
   exit();
 }
 
@@ -126,6 +134,14 @@ void sched() {
 }
 
 void dump_telemetry() {
+  uart_puts("--- SYSTEM STATE ---\n");
+  uart_puts("Total Energy: ");
+  uart_putint(total_energy);
+  uart_puts(", Missed Deadlines: ");
+  uart_putint(missed_deadlines);
+  uart_puts(", Current Freq: ");
+  uart_putint(current_freq);
+  uart_puts("\n");
   for (int i = 0; i < MAX_TASKS; i++) {
     if (tasks[i].state == UNUSED)
       continue;

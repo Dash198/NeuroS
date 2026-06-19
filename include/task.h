@@ -83,6 +83,7 @@ typedef struct task_t {
   uint64_t ticks_waiting;
   int priority_ticks;
   int wakeup_tick;
+  uint64_t deadline_tick;
 
   int priority;
 } task_t;

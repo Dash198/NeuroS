@@ -1,9 +1,8 @@
-#include <stdint.h>
-
 #include "common.h"
 #include "riscv.h"
 #include "task.h"
 #include "uart.h"
+#include <stdint.h>
 
 #define MTIME_ADDR 0x0200BFF8
 #define MTIMECMP_ADDR 0x02004000
@@ -14,6 +13,11 @@ extern void trap_handler(void);
 
 // Global tick counter
 volatile uint64_t ticks = 0;
+extern uint64_t missed_deadlines;
+// Simulate DVFS
+int current_freq = 1;
+
+uint64_t total_energy = 0;
 
 // Trap handler
 void handle_trap() {
@@ -21,7 +25,7 @@ void handle_trap() {
 
   // uart_putc('T');
   ticks++;
-
+  total_energy += (current_freq * current_freq);
   current_task->ticks_run++;
   current_task->priority_ticks++;
 
@@ -57,7 +61,7 @@ void handle_trap() {
 
   // Update the next comparison
   uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
-  *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
+  *(volatile uint64_t *)MTIMECMP_ADDR = now + current_freq * INTERVAL;
 
   sched();
 }
@@ -71,7 +75,7 @@ void timer_init() {
 
   // Initialize the comparison reg.
   uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
-  *(volatile uint64_t *)MTIMECMP_ADDR = now + INTERVAL;
+  *(volatile uint64_t *)MTIMECMP_ADDR = now + current_freq * INTERVAL;
 
   // Enable interrupts
   set_mie(1 << 7);
