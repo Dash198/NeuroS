@@ -236,3 +236,18 @@ We successfully broke free from infinite `while(1)` loops by implementing `sleep
 **The Spawner:** To prevent the OS from running out of tasks, we turned Task 0 (`init`) into an I/O bound spawner. It sleeps for 500 ticks, wakes up, and calls `create_task(&runC)`.
 **The Math Proof:** Telemetry dumps ignored `runC` because it finished so fast that it was cleaned up as `UNUSED` before the 100-tick telemetry window hit. However, by analyzing the CPU consumption of Task 1 and Task 2 between tick 500 and 600, we found exactly 30 missing ticks of CPU time! `runC` was perfectly spawned, executed for exactly 30 ticks, and cleanly exited without crashing the OS.
 **Result:** Phase 3 is complete! The OS is now dynamic, generating rich asymmetric workload telemetry ready for Machine Learning.
+
+### 9. Simulated DVFS and The Chaotic Testing Environment (June 19, 2026)
+We pivoted the project towards Dynamic Voltage and Frequency Scaling (DVFS). Since QEMU cannot change physical hardware frequency, we simulated DVFS physics natively in the kernel!
+**The Mechanics:**
+- **Timer Scaling:** We introduced `current_freq`. By setting `MTIMECMP_ADDR = now + current_freq * INTERVAL`, tasks literally experience more real CPU execution time per OS tick at higher frequencies.
+- **Energy Cost:** Power scales quadratically. We added `total_energy += (current_freq * current_freq)` on every tick.
+- **Deadlines:** Tasks are assigned a `deadline_tick`. If they exit after this tick, a global `missed_deadlines` penalty goes up.
+**The Chaotic Environment:** To train a robust ML model, we replaced our predictable Spawner with a Stochastic Workload Generator. We wrote a custom Linear Congruential Generator (LCG) `rand()`. The `init` task now sleeps for random intervals and spawns `worker_task`s with completely random mathematical workload sizes and proportional deadlines.
+
+### 10. The Baseline Governors Experiment
+To prove an ML agent is necessary, we built three traditional heuristic governors to test against our chaotic environment:
+1. **The Ondemand Governor:** Uses a threshold heuristic based on Run Queue length. Because our background tasks (`runA` and `runB`) are always running, it permanently locked the frequency at 2. It achieved **0 Missed Deadlines**, but burned **~4432 Energy**.
+2. **The PID Controller:** Measured the "error" of too many tasks in the queue. The constant background tasks caused massive integral windup, locking the frequency at 3. It achieved **0 Missed Deadlines**, but burned a horrifying **~8967 Energy**.
+3. **The Oracle Governor:** A theoretical cheat. It peeks inside the `task_t` struct to read the exact `workload_size` and `deadline_tick`, mathematically calculating the absolute minimum frequency needed. It aggressively sat at Frequency 1, only spiking for massive random workloads. It achieved **0 Missed Deadlines**, while burning only **~1292 Energy**!
+**Result:** We have mathematically proven that heuristics fail when background tasks are present. We have our absolute ceiling of efficiency (The Oracle) and our terrible baselines (PID/Ondemand). We are ready to export this telemetry to Python and build an RL Agent!

@@ -84,6 +84,7 @@ typedef struct task_t {
   int priority_ticks;
   int wakeup_tick;
   uint64_t deadline_tick;
+  uint64_t workload_size;
 
   int priority;
 } task_t;

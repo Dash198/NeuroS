@@ -19,6 +19,89 @@ int current_freq = 1;
 
 uint64_t total_energy = 0;
 
+int count_ready_tasks() {
+  int ready_tasks = 0;
+
+  // Count how many tasks want the CPU right now
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].state == READY || tasks[i].state == RUNNING) {
+      ready_tasks++;
+    }
+  }
+
+  return ready_tasks;
+}
+
+void ondemand_governor() {
+
+  int ready_tasks = count_ready_tasks();
+  // Classic Threshold Heuristic
+  if (ready_tasks >= 3) {
+    current_freq = 3; // Panic! Go to MAX speed
+  } else if (ready_tasks == 2) {
+    current_freq = 2; // Moderate work
+  } else {
+    current_freq = 1; // Only 1 task running, save energy
+  }
+}
+
+int previous_error = 0;
+int integral = 0;
+
+void pid_governor() {
+  int ready_tasks = count_ready_tasks(); // (Write a helper for this)
+  int target_tasks = 1;                  // We ideally only want 1 task running
+
+  int error = ready_tasks - target_tasks;
+  integral = integral + error;
+  int derivative = error - previous_error;
+
+  // Integer tuning constants (Kp, Ki, Kd)
+  int output = (10 * error) + (2 * integral) + (5 * derivative);
+
+  if (output > 20)
+    current_freq = 3;
+  else if (output > 10)
+    current_freq = 2;
+  else
+    current_freq = 1;
+
+  previous_error = error;
+}
+
+void oracle_governor() {
+  int max_freq_needed = 1;
+
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (tasks[i].state == READY || tasks[i].state == RUNNING) {
+      // We only care about worker tasks with actual deadlines!
+      if (tasks[i].workload_size > 0 && tasks[i].deadline_tick > ticks) {
+
+        uint64_t ticks_remaining = tasks[i].deadline_tick - ticks;
+        if (ticks_remaining == 0)
+          ticks_remaining = 1; // Prevent div by zero
+
+        // How much work MUST we finish per tick to meet the deadline?
+        uint64_t work_per_tick = tasks[i].workload_size / ticks_remaining;
+
+        int required_freq = 1;
+        if (work_per_tick > 3200000) {
+          required_freq = 3; // We need Freq 3 to survive!
+        } else if (work_per_tick > 1600000) {
+          required_freq = 2; // We need Freq 2 to survive!
+        }
+
+        // If this task demands a higher frequency, bump up the global freq!
+        if (required_freq > max_freq_needed) {
+          max_freq_needed = required_freq;
+        }
+      }
+    }
+  }
+
+  current_freq = max_freq_needed;
+}
+
 // Trap handler
 void handle_trap() {
   // Change the process
@@ -59,6 +142,7 @@ void handle_trap() {
     }
   }
 
+  oracle_governor();
   // Update the next comparison
   uint64_t now = *(volatile uint64_t *)MTIME_ADDR;
   *(volatile uint64_t *)MTIMECMP_ADDR = now + current_freq * INTERVAL;

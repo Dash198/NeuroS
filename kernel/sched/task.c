@@ -16,13 +16,41 @@ uint64_t missed_deadlines = 0;
 void runC();
 int create_task(void (*entry_point)());
 
+uint32_t seed = 12345;
+uint32_t rand() {
+  seed = (1103515245 * seed + 12345) % 2147483648;
+  return seed;
+}
+
+void worker_task() {
+  set_mstatus(1 << 3);
+  volatile uint64_t i = 0;
+  while (i < current_task->workload_size) {
+    i++;
+  }
+  if (ticks > current_task->deadline_tick) {
+    missed_deadlines += 1;
+  }
+  exit();
+}
+
 void init() {
   set_mstatus(1 << 3);
   while (1) {
-    sleep(500);                       // Sleep for a while
-    int task_id = create_task(&runC); // Spawn a new finite task to do work!
+    // 1. Sleep for a random interval (e.g., 50 to 250 ticks)
+    int sleep_time = (rand() % 200) + 50;
+    sleep(sleep_time);
+
+    // 2. Spawn a new task
+    int task_id = create_task(&worker_task);
     if (task_id != -1) {
-      tasks[task_id].deadline_tick = ticks + 40;
+      // 3. Give it a random workload (e.g., 10M to 90M iterations)
+      tasks[task_id].workload_size = (rand() % 80000000) + 10000000;
+
+      // 4. Set a deadline based on the workload size
+      // (e.g., larger workloads get more ticks to finish)
+      tasks[task_id].deadline_tick =
+          ticks + (tasks[task_id].workload_size / 1000000);
     }
   }
 }
@@ -96,7 +124,6 @@ void task_init() {
   create_task(&init);
   create_task(&runA);
   create_task(&runB);
-  create_task(&runC);
   current_task = &tasks[0];
 }
 
